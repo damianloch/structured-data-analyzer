@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import os
 import pandas as pd
+import tempfile
 from langchain_experimental.agents import create_csv_agent
 from langchain.llms import OpenAI
 from dotenv import load_dotenv
@@ -31,15 +32,16 @@ def upload_file():
     if file.filename == '':
         return jsonify({"error": "No selected file"}), 400
     
-    # Save the file
+    # Save the file in a temporary directory
     file_ext = file.filename.rsplit('.', 1)[1].lower()
-    uploaded_file_path = f"/tmp/uploaded_file.{file_ext}"
-    file.save(uploaded_file_path)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_ext}") as temp_file:
+        uploaded_file_path = temp_file.name
+        file.save(uploaded_file_path)
     
     # If Excel file, convert to CSV
     if file_ext == 'xlsx':
         data = pd.read_excel(uploaded_file_path, engine='openpyxl')
-        uploaded_file_path = "/tmp/uploaded_file.csv"
+        uploaded_file_path = tempfile.NamedTemporaryFile(delete=False, suffix=".csv").name
         data.to_csv(uploaded_file_path, index=False)
     
     # Create the LangChain CSV agent
